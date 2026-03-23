@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaNode — Borehole Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080c12;
+    --surface: #0d1420;
+    --surface2: #111827;
+    --border: #1e2d42;
+    --accent: #00e5a0;
+    --accent2: #00b8ff;
+    --red: #ff4444;
+    --orange: #ff9500;
+    --muted: #4a5f7a;
+    --text: #c8dae8;
+    --text-bright: #e8f4ff;
+    --font-main: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-main); overflow-x: hidden; }
+
+  /* ============ PAGES ============ */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; }
+
+  /* ============ INTRO PAGE ============ */
+  #intro-page {
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Animated background grid */
+  .grid-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridDrift 20s linear infinite;
+  }
+  @keyframes gridDrift {
+    0% { transform: translate(0,0); }
+    100% { transform: translate(60px, 60px); }
+  }
+
+  /* Glowing orbs */
+  .orb {
+    position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0;
+  }
+  .orb-1 { width: 500px; height: 500px; background: rgba(0,229,160,0.06); top: -100px; left: -100px; animation: orbFloat1 15s ease-in-out infinite; }
+  .orb-2 { width: 400px; height: 400px; background: rgba(0,184,255,0.05); bottom: -50px; right: -50px; animation: orbFloat2 18s ease-in-out infinite; }
+  .orb-3 { width: 300px; height: 300px; background: rgba(0,229,160,0.04); top: 50%; left: 50%; transform: translate(-50%,-50%); animation: orbFloat3 12s ease-in-out infinite; }
+  @keyframes orbFloat1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,30px)} }
+  @keyframes orbFloat2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,-30px)} }
+  @keyframes orbFloat3 { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-50%) scale(1.2)} }
+
+  .intro-content {
+    position: relative; z-index: 1;
+    max-width: 1100px; margin: 0 auto; padding: 60px 40px;
+    width: 100%;
+  }
+
+  /* Header bar */
+  .intro-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 80px;
+    animation: fadeDown 0.8s ease both;
+  }
+  .intro-logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: grid; place-items: center;
+  }
+  .logo-icon svg { width: 22px; height: 22px; fill: #080c12; }
+  .logo-wordmark { font-family: var(--font-main); font-weight: 800; font-size: 20px; color: var(--text-bright); letter-spacing: -0.5px; }
+  .logo-tagline { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+  .version-badge {
+    font-family: var(--font-mono); font-size: 10px; color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.3); border-radius: 20px; padding: 4px 12px;
+    background: rgba(0,229,160,0.05);
+  }
+
+  /* Hero */
+  .hero-eyebrow {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 24px;
+    animation: fadeUp 0.8s 0.1s ease both;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hero-eyebrow::before { content: ''; display: block; width: 30px; height: 1px; background: var(--accent); }
+
+  .hero-title {
+    font-size: clamp(42px, 6vw, 80px); font-weight: 800; line-height: 1.0;
+    color: var(--text-bright); letter-spacing: -2px; margin-bottom: 28px;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+  .hero-title .accent-word { color: var(--accent); }
+  .hero-title .dim-word { color: var(--muted); font-weight: 400; }
+
+  .hero-desc {
+    font-size: 17px; line-height: 1.8; color: var(--text); max-width: 620px;
+    margin-bottom: 50px; font-weight: 400;
+    animation: fadeUp 0.8s 0.3s ease both;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: flex; gap: 0; margin-bottom: 60px;
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+  .stat-item {
+    flex: 1; padding: 24px 28px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-value { font-family: var(--font-mono); font-size: 28px; color: var(--accent); font-weight: 700; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; letter-spacing: 0.5px; }
+
+  /* Feature cards */
+  .features-label {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 20px;
+    animation: fadeUp 0.8s 0.5s ease both;
+  }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 60px;
+    animation: fadeUp 0.8s 0.55s ease both;
+  }
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px;
+    transition: border-color 0.3s, transform 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .feature-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .feature-card:hover { border-color: rgba(0,229,160,0.3); transform: translateY(-3px); }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(0,229,160,0.08); border: 1px solid rgba(0,229,160,0.15);
+    display: grid; place-items: center; margin-bottom: 16px;
+  }
+  .feature-icon svg { width: 18px; height: 18px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
+  .feature-title { font-size: 14px; font-weight: 700; color: var(--text-bright); margin-bottom: 8px; }
+  .feature-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* CTA */
+  .cta-area {
+    display: flex; align-items: center; gap: 20px;
+    animation: fadeUp 0.8s 0.65s ease both;
+  }
+  .btn-launch {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--accent); color: #080c12;
+    border: none; border-radius: 10px; padding: 16px 32px;
+    font-family: var(--font-main); font-weight: 700; font-size: 15px;
+    cursor: pointer; transition: all 0.2s; letter-spacing: -0.2px;
+  }
+  .btn-launch:hover { background: #00ffb3; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,229,160,0.3); }
+  .btn-launch svg { width: 16px; height: 16px; }
+  .cta-hint { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+  /* Floating diagram */
+  .diagram-area {
+    position: fixed; right: -30px; top: 50%; transform: translateY(-50%);
+    width: 400px; opacity: 0.5; pointer-events: none; z-index: 0;
+    animation: fadeUp 1.2s 0.5s ease both;
+  }
+
+  /* ============ DASHBOARD PAGE ============ */
+  #dashboard-page {
+    flex-direction: row; min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+  }
+  .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo-mark { display: flex; align-items: center; gap: 10px; }
+  .sidebar-logo-text { font-weight: 800; font-size: 16px; color: var(--text-bright); }
+  .sidebar-logo-sub { font-family: var(--font-mono); font-size: 8px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .nav { flex: 1; padding: 16px 12px; }
+  .nav-section { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; padding: 8px 8px 4px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 8px; color: var(--muted);
+    font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none;
+    transition: all 0.2s; margin-bottom: 2px;
+  }
+  .nav-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .nav-item.active { background: rgba(0,229,160,0.08); color: var(--accent); }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: auto; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+  .borehole-chip {
+    background: rgba(0,229,160,0.06); border: 1px solid rgba(0,229,160,0.15);
+    border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;
+  }
+  .bh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: pulse 2s ease-in-out infinite; }
+  .bh-name { font-size: 12px; font-weight: 700; color: var(--text-bright); }
+  .bh-loc { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+
+  /* Main */
+  .main { flex: 1; overflow-y: auto; }
+
+  /* Topbar */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px; border-bottom: 1px solid var(--border);
+    background: rgba(8,12,18,0.8); backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-left { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .topbar-left span { color: var(--text-bright); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px;
+    color: var(--accent); border: 1px solid rgba(0,229,160,0.3);
+    border-radius: 20px; padding: 4px 10px; background: rgba(0,229,160,0.05);
+  }
+  .live-badge svg { width: 6px; height: 6px; animation: pulse 1.5s infinite; }
+  .pump-badge-top {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 20px; font-weight: 700;
+  }
+  .pump-badge-top.on { color: var(--accent); background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.3); }
+  .pump-badge-top.off { color: var(--muted); background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+
+  /* Content */
+  .content { padding: 24px 28px; }
+
+  /* Status banner */
+  .status-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 20px; border-radius: 12px; margin-bottom: 24px;
+    border: 1px solid; transition: all 0.5s;
+  }
+  .status-banner.healthy { background: rgba(0,229,160,0.06); border-color: rgba(0,229,160,0.2); }
+  .status-banner.warning { background: rgba(255,149,0,0.08); border-color: rgba(255,149,0,0.25); }
+  .status-banner.critical { background: rgba(255,68,68,0.08); border-color: rgba(255,68,68,0.25); }
+  .status-banner.idle { background: rgba(255,255,255,0.03); border-color: var(--border); }
+  .status-icon { font-size: 18px; }
+  .status-label { font-size: 14px; font-weight: 700; color: var(--text-bright); }
+  .status-desc { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); }
+  .status-time { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+  /* Metrics grid */
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .metric-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .metric-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+  .metric-value { font-size: 32px; font-weight: 800; color: var(--text-bright); line-height: 1; margin-bottom: 8px; }
+  .metric-unit { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .metric-delta { font-family: var(--font-mono); font-size: 11px; }
+  .delta-success { color: var(--accent); }
+  .delta-warning { color: var(--orange); }
+  .delta-danger { color: var(--red); }
+  .delta-neutral { color: var(--muted); }
+
+  /* Alerts card */
+  .alerts-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .chart-title { font-size: 12px; font-weight: 700; color: var(--text-bright); letter-spacing: 0.3px; }
+  .alert-count {
+    margin-left: auto; min-width: 20px; height: 20px; border-radius: 10px;
+    background: var(--red); color: white; font-family: var(--font-mono);
+    font-size: 10px; display: grid; place-items: center; padding: 0 6px;
+  }
+  .alert-count.zero { background: rgba(255,255,255,0.08); color: var(--muted); }
+  .alert-item { display: flex; gap: 10px; padding: 10px; border-radius: 8px; margin-bottom: 6px; background: rgba(255,68,68,0.06); border: 1px solid rgba(255,68,68,0.15); }
+  .alert-item.warning { background: rgba(255,149,0,0.06); border-color: rgba(255,149,0,0.15); }
+  .alert-sev { font-family: var(--font-mono); font-size: 9px; color: var(--red); font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+  .alert-item.warning .alert-sev { color: var(--orange); }
+  .alert-msg { font-size: 12px; color: var(--text); }
+  .alert-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Middle row */
+  .mid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+  /* Pump control */
+  .pump-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px;
+  }
+  .pump-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .pump-body { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  .pump-status-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .pump-indicator { display: flex; align-items: center; gap: 8px; }
+  .pump-dot { width: 10px; height: 10px; border-radius: 50%; transition: background 0.3s; }
+  .pump-indicator.on .pump-dot { background: var(--accent); animation: pulse 1.5s infinite; box-shadow: 0 0 10px rgba(0,229,160,0.5); }
+  .pump-indicator.off .pump-dot { background: var(--muted); }
+  .pump-state-text { font-weight: 800; font-size: 18px; color: var(--text-bright); }
+  .pump-btns { display: flex; gap: 10px; }
+  .btn {
+    display: flex; align-items: center; gap: 8px; padding: 10px 20px;
+    border-radius: 8px; border: none; cursor: pointer; font-family: var(--font-main);
+    font-size: 13px; font-weight: 700; transition: all 0.2s;
+  }
+  .btn-start { background: var(--accent); color: #080c12; }
+  .btn-start:hover { background: #00ffb3; box-shadow: 0 8px 20px rgba(0,229,160,0.3); transform: translateY(-1px); }
+  .btn-pause { background: rgba(255,149,0,0.12); color: var(--orange); border: 1px solid rgba(255,149,0,0.3); }
+  .btn-pause:hover { background: rgba(255,149,0,0.2); }
+
+  /* Gauge */
+  .gauge-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px; display: flex; flex-direction: column; align-items: center;
+  }
+  .gauge-title { font-size: 12px; font-weight: 700; color: var(--text-bright); margin-bottom: 16px; align-self: flex-start; }
+  .gauge-val { font-family: var(--font-mono); font-size: 28px; font-weight: 700; }
+  .gauge-lbl { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* Chart card */
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 24px;
+  }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .chart-canvas-wrap { position: relative; height: 160px; }
+
+  /* Table */
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 24px; overflow: hidden;
+  }
+  .table-header { display: flex; align-items: center; margin-bottom: 16px; }
+  .tag { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 4px; font-weight: 700; }
+  .tag-blue { background: rgba(0,184,255,0.1); color: var(--accent2); border: 1px solid rgba(0,184,255,0.2); margin-left: 10px; }
+  .tag-green { background: rgba(0,229,160,0.1); color: var(--accent); border: 1px solid rgba(0,229,160,0.2); }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; padding: 0 12px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 10px 12px; border-bottom: 1px solid rgba(30,45,66,0.5); font-family: var(--font-mono); font-size: 11px; color: var(--text); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr.new-row td { background: rgba(0,229,160,0.03); animation: rowIn 0.4s ease; }
+  @keyframes rowIn { from {opacity:0; transform:translateY(-6px)} to {opacity:1; transform:translateY(0)} }
+  .temp-chip { padding: 3px 8px; border-radius: 5px; font-weight: 700; font-size: 10px; }
+  .temp-ok { background: rgba(0,229,160,0.1); color: var(--accent); }
+  .temp-warn { background: rgba(255,149,0,0.12); color: var(--orange); }
+  .temp-crit { background: rgba(255,68,68,0.12); color: var(--red); }
+
+  /* Idle overlay on table */
+  .idle-overlay {
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px;
+    padding: 40px; text-align: center; color: var(--muted);
+  }
+  .idle-overlay svg { opacity: 0.3; width: 32px; height: 32px; margin-bottom: 4px; }
+  .idle-overlay p { font-family: var(--font-mono); font-size: 11px; }
+
+  /* Animations */
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .features-grid { grid-template-columns: 1fr 1fr; }
+    .stats-row { flex-wrap: wrap; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .mid-row { grid-template-columns: 1fr; }
+    .sidebar { width: 180px; }
+  }
+  @media (max-width: 600px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: 1fr; }
+    .intro-content { padding: 30px 20px; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =========== INTRO PAGE =========== -->
+<div id="intro-page" class="page active">
+  <div class="grid-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="intro-content">
+    <div class="intro-header">
+      <div class="intro-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+        </div>
+        <div>
+          <div class="logo-wordmark">AquaNode</div>
+          <div class="logo-tagline">Borehole Intelligence</div>
+        </div>
+      </div>
+      <div class="version-badge">v2.4 DEMO</div>
+    </div>
+
+    <div class="hero-eyebrow">Remote Monitoring System</div>
+
+    <h1 class="hero-title">
+      Smart Water<br>
+      <span class="accent-word">Infrastructure</span><br>
+      <span class="dim-word">Intelligence</span>
+    </h1>
+
+    <p class="hero-desc">
+      AquaNode is a real-time remote borehole monitoring platform that gives water utility operators
+      and field engineers live visibility into pump health, temperature thresholds, and system uptime —
+      from anywhere, on any device. No manual site visits required.
+    </p>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-value">24/7</div>
+        <div class="stat-label">Continuous Monitoring</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">&lt;2s</div>
+        <div class="stat-label">Alert Response Time</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">99.8%</div>
+        <div class="stat-label">Uptime Reliability</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">∞</div>
+        <div class="stat-label">Remote Boreholes</div>
+      </div>
+    </div>
+
+    <div class="features-label">— Core Capabilities</div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </div>
+        <div class="feature-title">Live Sensor Streaming</div>
+        <div class="feature-desc">Real-time temperature, flow rate, and pump status data streamed directly from field sensors every 5 seconds.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        </div>
+        <div class="feature-title">Remote Pump Control</div>
+        <div class="feature-desc">Start or pause borehole pumps remotely from the dashboard — with immediate state confirmation from the field unit.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="feature-title">Intelligent Alerting</div>
+        <div class="feature-desc">Threshold-based alerts for critical temperature, abnormal pump cycles, and prolonged offline states — with severity levels.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="feature-title">Historical Analytics</div>
+        <div class="feature-desc">View temperature trends and pump uptime over 24h, 7d, or 30d windows with interactive time-series charts.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="feature-title">Role-Based Access</div>
+        <div class="feature-desc">Separate operator and admin roles ensure field technicians have the right permissions without exposing system settings.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="feature-title">Any-Device Access</div>
+        <div class="feature-desc">Fully responsive web interface works on desktop, tablet, and mobile — accessible from any site or office location.</div>
+      </div>
+    </div>
+
+    <div class="cta-area">
+      <button class="btn-launch" onclick="goToDashboard()">
+        <svg viewBox="0 0 16 16" fill="currentColor"><polygon points="3,2 13,8 3,14"/></svg>
+        Launch Live Dashboard
+      </button>
+      <div class="cta-hint">↑ SIMULATED DEMO DATA</div>
+    </div>
+  </div>
+</div>
+
+<!-- =========== DASHBOARD PAGE =========== -->
+<div id="dashboard-page" class="page">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">
+        <div class="logo-icon" style="width:32px;height:32px;border-radius:8px">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+        </div>
+        <div style="margin-left:10px">
+          <div class="sidebar-logo-text">AquaNode</div>
+          <div class="sidebar-logo-sub">Borehole Intelligence</div>
+        </div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Monitor</div>
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+        <div class="live-dot"></div>
+      </a>
+      <div class="nav-section">System</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="6" r="3"/><path d="M2 14C2 11.2 4.7 9 8 9C11.3 9 14 11.2 14 14"/></svg>
+        Accounts
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="borehole-chip">
+        <div class="bh-dot" id="sbDot"></div>
+        <div>
+          <div class="bh-name">Borehole #1</div>
+          <div class="bh-loc">Harare North Zone</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left"><span>Dashboard</span> · Borehole #1</div>
+      <div class="topbar-right">
+        <div class="pump-badge-top off" id="topPumpBadge">⬤ PUMP OFF</div>
+        <div class="live-badge">
+          <svg viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="currentColor"/></svg>
+          LIVE
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Status Banner -->
+      <div class="status-banner idle" id="statusBanner">
+        <div class="status-icon">◌</div>
+        <div>
+          <div class="status-label" id="statusLabel">Pump Offline</div>
+          <div class="status-desc" id="statusDesc">Start the pump to begin monitoring sensor data</div>
+        </div>
+        <div class="status-time" id="statusTime">—</div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Pump Temp</div>
+          <div class="metric-value" id="metricPumpTemp">—<span class="metric-unit">°C</span></div>
+          <div class="metric-delta delta-neutral" id="metricTempStatus">Pump offline</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Pump Uptime</div>
+          <div class="metric-value" id="metricUptime">—<span class="metric-unit">%</span></div>
+          <div class="metric-delta delta-neutral" id="metricCycles">— cycles</div>
+        </div>
+        <div class="metric-card">
+          <div class="alerts-header">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--red)" stroke-width="1.5"><path d="M8 1L15 14H1L8 1Z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12.5" r="0.5" fill="var(--red)"/></svg>
+            <div class="chart-title">Active Alerts</div>
+            <div class="alert-count zero" id="alertCount">0</div>
+          </div>
+          <div class="alerts-list" id="alertsList">
+            <div class="idle-overlay">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p>No active alerts</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pump Control + Gauge -->
+      <div class="mid-row">
+        <div class="pump-card">
+          <div class="pump-header">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="8" r="2.5"/></svg>
+            <div class="chart-title">Pump Control</div>
+          </div>
+          <div class="pump-body">
+            <div>
+              <div class="pump-status-label">Current State</div>
+              <div class="pump-indicator off" id="pumpIndicator">
+                <div class="pump-dot"></div>
+                <div class="pump-state-text" id="pumpStateText">OFFLINE</div>
+              </div>
+            </div>
+            <div class="pump-btns">
+              <button id="pumpToggleBtn" class="btn btn-start" onclick="togglePump()">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" id="pumpBtnIcon">
+                  <polygon points="2,1 10,6 2,11"/>
+                </svg>
+                <span id="pumpBtnText">Start Pump</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="gauge-card">
+          <div class="gauge-title">Pump Temperature</div>
+          <svg width="160" height="90" viewBox="0 0 160 90">
+            <path d="M 15 80 A 65 65 0 0 1 145 80" fill="none" stroke="#1e2d42" stroke-width="10" stroke-linecap="round"/>
+            <path id="tempArc" d="M 15 80 A 65 65 0 0 1 145 80" fill="none" stroke="#1e2d42" stroke-width="10" stroke-linecap="round" stroke-dasharray="204" stroke-dashoffset="204" style="transition:stroke-dashoffset 0.6s ease, stroke 0.6s ease"/>
+          </svg>
+          <div class="gauge-val" id="gaugeTemp" style="color:var(--muted)">—</div>
+          <div class="gauge-lbl">°C · 100°C max</div>
+        </div>
+      </div>
+
+      <!-- Temp Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Temperature History</div>
+          <div class="tag tag-blue">LIVE</div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-card">
+        <div class="table-header">
+          <div class="chart-title">Recent Sensor Data</div>
+          <span class="tag tag-blue" style="margin-left:10px">LIVE STREAM</span>
+        </div>
+        <div id="tableBody">
+          <div class="idle-overlay">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <p>Start the pump to see live sensor readings</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let isPumpRunning = false;
+let simInterval = null;
+let uptimeSeconds = 0;
+let sessionStartTime = null;
+let readings = [];
+let chartLabels = [];
+let chartData = [];
+let tempChart = null;
+
+// ============================================================
+// PAGE NAVIGATION
+// ============================================================
+function goToDashboard() {
+  document.getElementById('intro-page').classList.remove('active');
+  document.getElementById('dashboard-page').classList.add('active');
+  initChart();
+}
+
+// ============================================================
+// SIMULATION CORE
+// ============================================================
+function simulateTemp(base, variance) {
+  return parseFloat((base + (Math.random() - 0.5) * variance).toFixed(2));
+}
+
+let baseTemp = 42;
+let tempTrend = 0;
+
+function getNextTemp() {
+  if (!isPumpRunning) return null;
+  // Gradually warm up when pump starts, fluctuate during run
+  if (uptimeSeconds < 30) {
+    baseTemp += 0.5 * (Math.random() * 0.8);
+  } else {
+    tempTrend = (Math.random() - 0.48) * 0.8;
+    baseTemp = Math.max(38, Math.min(95, baseTemp + tempTrend));
+  }
+  return simulateTemp(baseTemp, 1.5);
+}
+
+function getAlerts(temp) {
+  const alerts = [];
+  if (temp >= 80) {
+    alerts.push({ severity: 'CRITICAL', message: `Pump temperature critical: ${temp}°C — risk of shutdown`, category: 'thermal' });
+  } else if (temp >= 65) {
+    alerts.push({ severity: 'WARNING', message: `Elevated pump temperature: ${temp}°C — monitor closely`, category: 'thermal' });
+  }
+  if (uptimeSeconds > 300 && Math.random() < 0.05) {
+    alerts.push({ severity: 'WARNING', message: 'Intermittent pressure drop detected in line 2', category: 'pressure' });
+  }
+  return alerts;
+}
+
+// ============================================================
+// SIMULATION TICK (every 3s)
+// ============================================================
+function simTick() {
+  if (!isPumpRunning) return;
+  uptimeSeconds += 3;
+  const temp = getNextTemp();
+  if (temp === null) return;
+
+  readings.push({ temp, time: new Date() });
+  if (readings.length > 50) readings.shift();
+
+  updateMetrics(temp);
+  updateGauge(temp);
+  updateChart(temp);
+  updateTable(temp);
+  updateStatus(temp);
+}
+
+// ============================================================
+// UI UPDATE FUNCTIONS
+// ============================================================
+function formatTime(d) {
+  return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+
+function updateMetrics(temp) {
+  // Temp
+  document.getElementById('metricPumpTemp').innerHTML = `${temp.toFixed(2)}<span class="metric-unit">°C</span>`;
+  const tempEl = document.getElementById('metricTempStatus');
+  if (temp >= 80) { tempEl.textContent = '⚠ Critical'; tempEl.className = 'metric-delta delta-danger'; }
+  else if (temp >= 65) { tempEl.textContent = '↑ High'; tempEl.className = 'metric-delta delta-warning'; }
+  else { tempEl.textContent = '✓ Normal'; tempEl.className = 'metric-delta delta-success'; }
+
+  // Uptime
+  const totalSecs = sessionStartTime ? (new Date() - sessionStartTime) / 1000 : uptimeSeconds;
+  const pct = totalSecs > 0 ? Math.min(100, (uptimeSeconds / totalSecs) * 100) : 100;
+  document.getElementById('metricUptime').innerHTML = `${pct.toFixed(1)}<span class="metric-unit">%</span>`;
+  document.getElementById('metricCycles').textContent = `${(uptimeSeconds/60).toFixed(1)}min on · ${readings.length} readings`;
+}
+
+function updateGauge(temp) {
+  const pct = Math.min(Math.max(temp / 100, 0), 1);
+  const arcLen = 204;
+  const offset = arcLen - (pct * arcLen);
+  const color = temp >= 80 ? '#ff4444' : temp >= 65 ? '#ff9500' : '#00e5a0';
+  const arc = document.getElementById('tempArc');
+  arc.style.strokeDashoffset = offset;
+  arc.style.stroke = color;
+  const valEl = document.getElementById('gaugeTemp');
+  valEl.textContent = temp.toFixed(1);
+  valEl.style.color = color;
+}
+
+function resetGauge() {
+  const arc = document.getElementById('tempArc');
+  arc.style.strokeDashoffset = 204;
+  arc.style.stroke = '#1e2d42';
+  const valEl = document.getElementById('gaugeTemp');
+  valEl.textContent = '—';
+  valEl.style.color = 'var(--muted)';
+}
+
+function updateStatus(temp) {
+  const banner = document.getElementById('statusBanner');
+  const alerts = getAlerts(temp);
+
+  updateAlerts(alerts);
+
+  if (alerts.some(a => a.severity === 'CRITICAL')) {
+    banner.className = 'status-banner critical';
+    document.getElementById('statusLabel').textContent = 'Critical Alert';
+    document.getElementById('statusDesc').textContent = `${alerts.filter(a=>a.severity==='CRITICAL').length} critical issue(s) detected`;
+  } else if (alerts.length > 0) {
+    banner.className = 'status-banner warning';
+    document.getElementById('statusLabel').textContent = 'System Warning';
+    document.getElementById('statusDesc').textContent = `${alerts.length} alert(s) require attention`;
+  } else {
+    banner.className = 'status-banner healthy';
+    document.getElementById('statusLabel').textContent = 'System Healthy';
+    document.getElementById('statusDesc').textContent = 'All systems nominal — pump running normally';
+  }
+  document.getElementById('statusTime').textContent = `— ${formatTime(new Date())}`;
+}
+
+function updateAlerts(alerts) {
+  const countEl = document.getElementById('alertCount');
+  countEl.textContent = alerts.length;
+  countEl.className = alerts.length > 0 ? 'alert-count' : 'alert-count zero';
+
+  const list = document.getElementById('alertsList');
+  if (!alerts.length) {
+    list.innerHTML = `<div class="idle-overlay" style="padding:16px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:20px;height:20px;opacity:0.3"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <p style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No active alerts</p>
+    </div>`;
+    return;
+  }
+  list.innerHTML = alerts.map(a => `
+    <div class="alert-item ${a.severity === 'WARNING' ? 'warning' : ''}">
+      <div class="alert-sev">${a.severity}</div>
+      <div>
+        <div class="alert-msg">${a.message}</div>
+        <div class="alert-time">${a.category} · ${formatTime(new Date())}</div>
+      </div>
+    </div>`).join('');
+}
+
+function updateChart(temp) {
+  if (!tempChart) return;
+  const label = formatTime(new Date());
+  chartLabels.push(label);
+  chartData.push(temp);
+  if (chartLabels.length > 20) { chartLabels.shift(); chartData.shift(); }
+  tempChart.data.labels = [...chartLabels];
+  tempChart.data.datasets[0].data = [...chartData];
+  tempChart.update('none');
+}
+
+function updateTable(temp) {
+  const tableDiv = document.getElementById('tableBody');
+  const now = new Date();
+  const tempClass = temp >= 80 ? 'temp-crit' : temp >= 65 ? 'temp-warn' : 'temp-ok';
+
+  // Create table if not exists
+  if (!tableDiv.querySelector('table')) {
+    tableDiv.innerHTML = `<table class="data-table">
+      <thead><tr>
+        <th>Timestamp</th>
+        <th>Pump Temp</th>
+        <th>Status</th>
+      </tr></thead>
+      <tbody id="sensorTbody"></tbody>
+    </table>`;
+  }
+
+  const tbody = document.getElementById('sensorTbody');
+  const row = document.createElement('tr');
+  row.className = 'new-row';
+  row.innerHTML = `
+    <td style="font-family:var(--font-mono)">${now.toLocaleString()}</td>
+    <td><span class="temp-chip ${tempClass}">${temp.toFixed(2)}°C</span></td>
+    <td><span style="color:var(--green,#00e5a0);font-family:var(--font-mono);font-size:11px">● OK</span></td>`;
+  tbody.insertBefore(row, tbody.firstChild);
+  while (tbody.rows.length > 12) tbody.deleteRow(tbody.rows.length - 1);
+}
+
+// ============================================================
+// PUMP CONTROL
+// ============================================================
+function togglePump() {
+  if (isPumpRunning) {
+    stopPump();
+  } else {
+    startPump();
+  }
+}
+
+function startPump() {
+  isPumpRunning = true;
+  sessionStartTime = new Date();
+  baseTemp = 38 + Math.random() * 8; // Start at a realistic cold temp
+
+  // Update indicators
+  const ind = document.getElementById('pumpIndicator');
+  ind.className = 'pump-indicator on';
+  document.getElementById('pumpStateText').textContent = 'RUNNING';
+  document.getElementById('pumpBtnText').textContent = 'Pause Pump';
+  document.getElementById('pumpBtnIcon').innerHTML = '<rect x="2" y="1" width="3" height="10" rx="1"/><rect x="7" y="1" width="3" height="10" rx="1"/>';
+  document.getElementById('pumpToggleBtn').className = 'btn btn-pause';
+
+  const badge = document.getElementById('topPumpBadge');
+  badge.textContent = '⬤ PUMP ON';
+  badge.className = 'pump-badge-top on';
+
+  document.getElementById('sbDot').style.background = 'var(--accent)';
+
+  // Status
+  document.getElementById('statusBanner').className = 'status-banner healthy';
+  document.getElementById('statusLabel').textContent = 'Pump Starting';
+  document.getElementById('statusDesc').textContent = 'Pump initialising — sensor data will appear shortly';
+
+  // Start ticking
+  simInterval = setInterval(simTick, 3000);
+  // Fire immediately
+  setTimeout(simTick, 500);
+}
+
+function stopPump() {
+  isPumpRunning = false;
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+
+  const ind = document.getElementById('pumpIndicator');
+  ind.className = 'pump-indicator off';
+  document.getElementById('pumpStateText').textContent = 'OFFLINE';
+  document.getElementById('pumpBtnText').textContent = 'Start Pump';
+  document.getElementById('pumpBtnIcon').innerHTML = '<polygon points="2,1 10,6 2,11"/>';
+  document.getElementById('pumpToggleBtn').className = 'btn btn-start';
+
+  const badge = document.getElementById('topPumpBadge');
+  badge.textContent = '⬤ PUMP OFF';
+  badge.className = 'pump-badge-top off';
+
+  document.getElementById('sbDot').style.background = 'var(--muted)';
+
+  // Status
+  document.getElementById('statusBanner').className = 'status-banner idle';
+  document.getElementById('statusLabel').textContent = 'Pump Offline';
+  document.getElementById('statusDesc').textContent = 'Pump stopped — no live readings';
+  document.getElementById('statusTime').textContent = `— Stopped ${formatTime(new Date())}`;
+
+  // Metrics
+  document.getElementById('metricPumpTemp').innerHTML = `—<span class="metric-unit">°C</span>`;
+  document.getElementById('metricTempStatus').textContent = 'Pump offline';
+  document.getElementById('metricTempStatus').className = 'metric-delta delta-neutral';
+
+  resetGauge();
+  updateAlerts([]);
+}
+
+// ============================================================
+// CHART INIT
+// ============================================================
+function initChart() {
+  const ctx = document.getElementById('tempChart').getContext('2d');
+  tempChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Pump Temp (°C)',
+        data: [],
+        borderColor: '#00e5a0',
+        backgroundColor: 'rgba(0,229,160,0.07)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: '#00e5a0',
+        pointBorderColor: '#080c12',
+        pointBorderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1420',
+          borderColor: '#1e2d42',
+          borderWidth: 1,
+          titleColor: '#c8dae8',
+          bodyColor: '#00e5a0',
+          titleFont: { family: 'Space Mono', size: 10 },
+          bodyFont: { family: 'Space Mono', size: 11 },
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(30,45,66,0.5)', drawBorder: false },
+          ticks: { color: '#4a5f7a', font: { family: 'Space Mono', size: 9 }, maxRotation: 0, maxTicksLimit: 6 }
+        },
+        y: {
+          min: 20, max: 100,
+          grid: { color: 'rgba(30,45,66,0.5)', drawBorder: false },
+          ticks: { color: '#4a5f7a', font: { family: 'Space Mono', size: 9 }, callback: v => v + '°C' }
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
